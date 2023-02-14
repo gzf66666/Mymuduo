@@ -1,11 +1,11 @@
 # muduo
 基于C++11的muduo网络库
 
-作者：shenmingik
+作者：gzf66666
 
-邮箱：2107810343@qq.com
+邮箱：gzf66666@foxmail.com
 
-时间：2021/1/26 22:17
+时间：2023/2/14 19:21
 
 开发环境：Ubuntu VS Code
 
@@ -13,8 +13,6 @@
 
 编程语言：C++
 
-源码链接：
-[微云链接](https://share.weiyun.com/TvmQb52d)
 # 写在前面
 ## 项目编译问题
 项目编译时基于cmake的，在源码链接中有CMakeLists.txt文件，下载完之后直接点击那个编译即可。
