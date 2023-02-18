@@ -1,11 +1,10 @@
-# muduo
+# 	muduo
+
 基于C++11的muduo网络库
 
 作者：gzf66666
 
 邮箱：gzf66666@foxmail.com
-
-时间：2023/2/14 19:21
 
 开发环境：Ubuntu VS Code
 
@@ -14,18 +13,23 @@
 编程语言：C++
 
 # 写在前面
+
 ## 项目编译问题
+
 项目编译时基于cmake的，在源码链接中有CMakeLists.txt文件，下载完之后直接点击那个编译即可。
 
 ## 库安装的问题
+
 在源码链接的`/lib`目录中有一个autobuild.sh文件，用`chmod +x autobuild.sh`命令给它加上执行权限之后，执行就可。
 
 > 注：博主的是Ubuntu系统，其他系统可以进去把地址给改一下
 
 ## 项目测试代码
+
 这里简单的写了一个回显服务器用于测试，在源码链接的`/example`目录下，大家可以下载自己测试一下。
 
 ## 关于压力测试
+
 由于我这里基本就是重写了一下原来的muduo + 懒（不是主要原因）
 
 所以
@@ -36,10 +40,12 @@
 [muduo 与 boost asio 吞吐量对比](https://blog.csdn.net/Solstice/article/details/5863411)
 
 # 项目概述
+
 这个项目呢，是将陈硕大神的muduo网络库源码中核心代码部分重新写了一遍，将原来依赖boost库的地方都替换成了C++ 11语法。算是博主对muduo网络库达成更好理解的一个产品吧。
 
 
 ## muduo网络库的reactor模型
+
 在muduo网络库中，采用的是**reactor**模型，那么，什么是reactor模型呢？
 
 > **Reactor：**
@@ -48,6 +54,7 @@
 > 即异步网络模型，可以理解为，向内核去注册一个感兴趣的事件及其处理handler，事件来了，内核去处理，完成之后告诉你
 
 ## muduo的设计
+
 reactor模型在实际设计中大致是有以下几个部分：
 
 - Event：事件
@@ -62,35 +69,40 @@ reactor模型在实际设计中大致是有以下几个部分：
 -	当demultiplex检测到connfd上有事件发生，就会返回相应事件
 -	reactor根据事件去调用eventhandler处理程序 
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20210214113852361.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3NoZW5taW5neHVlSVQ=,size_16,color_FFFFFF,t_70)
+![image-20230218203253770](C:\Users\Lenovo\AppData\Roaming\Typora\typora-user-images\image-20230218203253770.png)
 
 而上述的，是在一个reactor反应堆中所执行的大致流程，其在muduo代码中**包含关系**如下（椭圆圈起来的是类）：
 
 可以看到，EventLoop其实就是我们的reactor，其执行在一个Thread上，实现了one loop per thread的设计。
 每个EventLoop中，我们可以看到有一个Poller和很多的Channel，Poller在上图调用关系中，其实就是demultiplex（多路事件分发器）,而Channel对应的就是event（事件）
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20210214120009308.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3NoZW5taW5neHVlSVQ=,size_16,color_FFFFFF,t_70)
+![image-20230218203317757](C:\Users\Lenovo\AppData\Roaming\Typora\typora-user-images\image-20230218203317757.png)
 
 现在，我们大致明白了muduo每个reactor的设计，但是作为一个支持高并发的网络库，单线程 往往不是一个好的设计。
 
 muduo采用了和Nginx相似的操作，有一个main reactor通过accept组件负责处理新的客户端连接，并将它们分派给各个sub reactor，每个sub reactor则是负责一个连接的读写等工作。
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20210214111718808.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3NoZW5taW5neHVlSVQ=,size_16,color_FFFFFF,t_70)
+![image-20230218203344175](C:\Users\Lenovo\AppData\Roaming\Typora\typora-user-images\image-20230218203344175.png)
 
 # muduo各个类
+
 明白了muduo的细节之后，我们对muduo的剖析就更为容易。
 
 ## 辅助类
+
 这个类别的类与网络实现没有太大关系，只是用来辅助网络库的实现了
 
 ### NonCopyable
+
 这个类将拷贝和赋值构造函数给delete掉，提供了一个**不可拷贝**的基类
 
 ```cpp
     NonCopyable(const NonCopyable &) = delete;
     NonCopyable &operator=(const NonCopyable &) = delete;
 ```
+
 ### TimeStamp
+
 这个类用于给网络库提供系统时间，我这里用的是`time（nullptr）`函数
 
 ```cpp
@@ -101,7 +113,9 @@ muduo采用了和Nginx相似的操作，有一个main reactor通过accept组件�
     //转换为字符串
     string to_string();
 ```
+
 ### Logger
+
 这个是日志类,采用的是饿汉式的单例模式，用于打印网络库运行过程中的日志信息，主要分为四个级别
 
 - INFO:	正常的日志输出
@@ -110,6 +124,7 @@ muduo采用了和Nginx相似的操作，有一个main reactor通过accept组件�
 - DEBUG:	用于调试得到错误信息
 
 同时也往外提供了四个宏函数用于打印信息：`LOG_INFO、 LOG_ERROR、LOG_FATAL、LOG_DEBUG`，由于四个函数相似度较大，我这里就放出一个函数LOG_INFO
+
 ```cpp
 #define LOG_INFO(logmsgFormat, ...)                       \
     do                                                    \
@@ -121,6 +136,7 @@ muduo采用了和Nginx相似的操作，有一个main reactor通过accept组件�
         logger.log(buf);                                  \
     } while (0)
 ```
+
 我们可以看到，这里是对输入数据进行了处理然后调的logger的log函数进行打印。
 
 ```cpp
@@ -133,13 +149,15 @@ muduo采用了和Nginx相似的操作，有一个main reactor通过accept组件�
     //写日志
     void log(string msg);
 ```
+
 ### Buffer
+
 这个是muduo网络库中底层的数据缓冲类型，模仿java中netty的设计，其有一个prepend、read、write三个标志，划分了缓冲区的数据。
 其中perpend-read之间是一个头部的标志位，read-write是可读数据，write-末尾是可写数据。
 
 应用将数据写入到网络库的Buffer缓冲区，然后Buffer缓冲区再写到TCP的缓冲区，最后再发送。
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20210214125729501.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3NoZW5taW5neHVlSVQ=,size_16,color_FFFFFF,t_70)
+![image-20230218204017811](C:\Users\Lenovo\AppData\Roaming\Typora\typora-user-images\image-20230218204017811.png)
 
 ```cpp
 数据：
@@ -179,9 +197,13 @@ private:
     //扩容函数
     void makespace(size_t len);
 ```
+
 ## Reactor中类
+
 这个类别中主要讲解reactor中要实现的类
+
 ### InetAddress
+
 这个类封装了socket所要绑定的**ip地址**和**端口号**，比较简单
 
 ```cpp
@@ -192,7 +214,9 @@ private:
     void set_sockaddr(const sockaddr_in &addr) { addr_ = addr; }
     const sockaddr_in *get_sockaddr() const { return &addr_; }
 ```
+
 ### Channel
+
 这个类中主要是封装了sockfd及其所感兴趣的事件，还有发生事件所要调用的回调函数。
 
 ```cpp
@@ -250,7 +274,9 @@ private:
     //根据发生的具体事件调用相应的回调操作
     void handle_event_withGuard(TimeStamp receive_time);
 ```
+
 ### EpollPoller
+
 这个封装了epoll，也就是底层的demultiplex（多路事件分发），里面包含了一个指向Channel的指针，以及自己在内核事件表中的fd
 
 ```cpp
@@ -271,7 +297,9 @@ private:
     //更新channel，调用epoll_ctl
     void update(int operation, Channel *channel);
 ```
+
 ### EventLoop
+
 这个是事件循环类，主要包含两个组件 ----- Poller以及Channel。
 
 ```cpp
@@ -293,6 +321,7 @@ private:
 
     mutex functor_mutex_; //保护pending_functors
 ```
+
 可以看到，其有一个指向Poller的指针，以及一个存储Channel的容器，ChannelList。
 
 值得注意的是，这里还有一个wakeup_fd，这是干什么的呢？
@@ -326,9 +355,11 @@ private:
     void handle_read();         //wake up
     void do_pending_functors(); //执行回调
 ```
+
 现在我们大概对已经介绍的类有了一点眉目了，其实也就是对epoll的一个封装，原来的EpollLoop在epoll_create，注册各个channel之后，就处于epoll_wait处于阻塞状态。如果这个时候，之前的channel没有事件发生，而上层又想唤醒当前的EventLoop去执行新的连接，就调用wakeup，唤醒当前的EventLoop。
 
 ### Thread
+
 这个类，在原来的muduo中使用linux系统调用pthread_create那样写的较为繁琐，这里直接使用了C++ 11的thread类。相对来说，也比较简单了。
 
 ```cpp
@@ -350,7 +381,9 @@ private:
 private:
     void set_default_name();
 ```
+
 ### EventLoopThread
+
 都说muduo网络库的核心是**one loop per thread**，即一个线程一个eventloop。其实现的秘密就蕴藏在EventLoopThread类中。
 
 ```cpp
@@ -368,6 +401,7 @@ private:
 private:
     void thread_function();
 ```
+
 是不是很少，秘密藏在哪儿也就能直接看出来吧？
 
 **start_loop 与 thread_function**！
@@ -413,9 +447,11 @@ void EventLoopThread::thread_function()
     loop_ = nullptr;
 }
 ```
+
 而thread_function是通过初始化列表的方式，绑定在线程所要执行的函数当中。
 
 ### EventLoopThreadPool
+
 这个类，在之前的图中你可以理解为sub reactor池，通过设置thread_nums，可以创建相应数量的sub reactor。
 
 ```cpp
@@ -437,10 +473,13 @@ void EventLoopThread::thread_function()
     bool get_started() const;
     string get_name() const;
 ```
+
 ## main Reactor
+
 这个类别则主要是main reactor中实现的类，跟客户端的分发有关。
 
 ### Socket
+
 这个类也是对socket编程的封装，跟channel不同的是，它封装的是socket编程流程，包括bind、listen、accept 以及设置 socket的属性信息等
 
 ```cpp
@@ -457,7 +496,9 @@ void EventLoopThread::thread_function()
     void set_reusePort(bool on);
     void set_keepAlive(bool on);
 ```
+
 ### Acceptor
+
 这个组件在上图是特别点出来的，属于main reactor，用于分发客户端连接。
 
 ```cpp
@@ -468,6 +509,7 @@ void EventLoopThread::thread_function()
     NewConnectionCallback new_connetion_callback_;
     bool listenning_;
 ```
+
 可以看到，它本身也是一个socket，属于listen_fd，用于监听客户端的连接事件。当新用户连接的时候，就会执行它的new_connection_callback。那么这个回调又干了什么呢？
 
 ```cpp
@@ -476,6 +518,7 @@ void EventLoopThread::thread_function()
         new_connetion_callback_ = cb;
     }
 ```
+
 阅读源码我们知道，这个是上层给他设置的，也就是TcpServer中。所以说，具体的敢了什么得等会儿才知道。
 
 ```cpp
@@ -486,6 +529,7 @@ void EventLoopThread::thread_function()
  private:
     void handle_read();
 ```
+
 这里可以着重强调一下handle_read这个函数，它是accept触发读事件所设定的回调函数。
 
 ```cpp
@@ -517,8 +561,11 @@ void Acceptor::handle_read()
     }
 }
 ```
+
 看到了吧，它会将客户端的连接套接字进行一个信息记录，然后将这些信息传递到new_connection_callbak，执行它。所以说，这里执行了接受连接的命令，但是连接的分发还是藏在这个回调函数之中！
+
 ### TcpServer
+
 这个可以说是整个网络库的入口，为了用于更加方便使用，我将所有头文件都包含在这里了。
 
 ```cpp
@@ -536,6 +583,7 @@ void Acceptor::handle_read()
     int next_conn_id_;
     ConnectionMap connections_; //保存所有连接	unordered_map<string, TcpConnectionPtr>;
 ```
+
 可以看到，它大抵上是有这么几个组件，acceptor、eventloopthreadpool、一些回调、以及一个存储channel连接信息的connectionmap。刚刚好和我们一开始就提到的图对应起来了。
 
 ```cpp
@@ -553,6 +601,7 @@ private:
     void remove_connection(const TcpConnectionPtr &conn);
     void remove_connection_inLoop(const TcpConnectionPtr &conn);
 ```
+
 可以看到，最重要的其实就是`start()`以及三个私有函数了。首先来看看start函数做了什么？
 
 ```cpp
@@ -566,6 +615,7 @@ void TcpServer::start()
     }
 }
 ```
+
 看，它其实就是把EventLoopThreadPool给启动了，然后调用acceptor的listen方法，去监听连接而来的套接字。
 
 那么刚刚我们说的new_connection_callbak在哪儿，咋没看见？
@@ -578,6 +628,7 @@ TcpServer::TcpServer(EventLoop *loop, const InetAddress &listenaddr, const strin
     acceptor_->set_new_connection_callback(bind(&TcpServer::new_connection, this, _1, _2));
 }
 ```
+
 其实啊，在构造函数中被绑定了TcpServer的new_connection方法，也就是说，acceptor监听到新用户连接的时候，其实是执行TcpServer的new_connection方法。
 那么这个方法又做了什么呢？
 
@@ -621,6 +672,7 @@ void TcpServer::new_connection(int sockfd, const InetAddress &peeraddr)
     ioloop->run_in_loop(bind(&TcpConnection::establish_connect, conn));
 }
 ```
+
 去掉那些打印信息，我们总结一下：
 
 1. 轮询算法选择一个sub reactor
@@ -640,6 +692,7 @@ void TcpServer::new_connection(int sockfd, const InetAddress &peeraddr)
     //设置如何关闭连接的回调
     conn->set_close_callback(bind(&TcpServer::remove_connection, this, _1));
 ```
+
 可以看到，调用的其实是TcpServer的remove_connection
 
 ```cpp
@@ -648,6 +701,7 @@ void TcpServer::remove_connection(const TcpConnectionPtr &conn)
     loop_->run_in_loop(bind(&TcpServer::remove_connection_inLoop, this, conn));
 }
 ```
+
 可以看到，客户端的连接和关闭都是在main loop中执行的，只有读写事件是在sub loop中执行。而关闭连接的回调绕了一下，最终调用的是remove_connection_inloop
 
 ```cpp
@@ -660,6 +714,7 @@ void TcpServer::remove_connection_inLoop(const TcpConnectionPtr &conn)
     ioloop->queue_in_loop(bind(&TcpConnection::destory_connect, conn));
 }
 ```
+
 它就做了两件事：
 
 1. 删除连接map中的信息
@@ -668,6 +723,7 @@ void TcpServer::remove_connection_inLoop(const TcpConnectionPtr &conn)
 好了，还是TcpConnection这个类。
 
 ### TcpConnection
+
 ```cpp
 数据：
    	EventLoop *loop_; //所属subloop，非baseloop
@@ -689,7 +745,7 @@ void TcpServer::remove_connection_inLoop(const TcpConnectionPtr &conn)
 ```
 
  可以看到，其实它也是一个包装，将底层的包装，然后给用户去使用。
- 
+
 
 ```cpp
 方法：
@@ -721,6 +777,7 @@ private:
     //void shutdown();
     void shutdown_inLoop();
 ```
+
 其实重要的就是shutdown，establish_connect、destory_connect三个函数
 
 ```cpp
@@ -742,7 +799,9 @@ void TcpConnection::shutdown_inLoop()
     }
 }
 ```
+
 也是做了两件事：
+
 1. 设置此连接为关闭状态
 2. 关闭底层套接字的写端
 
@@ -758,6 +817,7 @@ void TcpConnection::establish_connect()
     connection_callback_(shared_from_this());
 }
 ```
+
 这个则是在底层把这个信息设置成对读事件感兴趣，然后调用用户给它传入的回调函数。
 
 ```cpp
@@ -772,9 +832,11 @@ void TcpConnection::destory_connect()
     channel_->remove(); //从poller中删除掉
 }
 ```
+
 这个也是，向底层的Polller删除掉
 
 # 总结
+
 现在，我们应该对整个muduo有了大致的掌握
 
 1. 用户创建一个main loop，主线程作为main reactor
@@ -784,4 +846,5 @@ void TcpConnection::destory_connect()
 5. 同时，每个sub reactor在服务时，其所包含的那个Poller如果没有事件就会处于循环阻塞状态，发生事件之后，根据类型再去执行响应的回调操作
 
 # 参考文献
+
 	[1] 陈硕.发布一个基于 Reactor 模式的 C++ 网络库.CSDN.2010.08
